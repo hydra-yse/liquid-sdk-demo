@@ -1,4 +1,5 @@
 import breez_sdk_liquid
+from breez_sdk_liquid.breez_sdk_liquid import ConnectRequest, LiquidNetwork, connect, default_config
 from mnemonic import Mnemonic
 
 DATA_DIR = ".data"
@@ -22,6 +23,11 @@ class DemoSDK():
         Step 1: Define an `init` method which connects to the SDK
         NOTE: It is suggested to set `config.working_dir` to the global DATA_DIR variable
         """
+        mnemonic = self.get_mnemonic()
+        config = default_config(network=LiquidNetwork.TESTNET)
+        config.working_dir = data_dir
+        connect_request = ConnectRequest(config=config, mnemonic=mnemonic)
+        self.instance = connect(req=connect_request)
 
     
     def get_info(self) -> breez_sdk_liquid.GetInfoResponse: # type: ignore[reportReturnType]
