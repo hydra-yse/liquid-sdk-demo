@@ -1,11 +1,29 @@
+import asyncio
 import breez_sdk_liquid
-from breez_sdk_liquid.breez_sdk_liquid import ConnectRequest, LiquidNetwork, PaymentMethod, PrepareReceiveRequest, PrepareSendRequest, ReceivePaymentRequest, SendPaymentRequest, connect, default_config
+
 from mnemonic import Mnemonic
+from asyncio import AbstractEventLoop, Queue
+from breez_sdk_liquid.breez_sdk_liquid import ConnectRequest, EventListener, LiquidNetwork, PaymentMethod, PrepareReceiveRequest, PrepareSendRequest, ReceivePaymentRequest, SdkEvent, SendPaymentRequest, connect, default_config
 
 DATA_DIR = ".data"
 
+class DemoListener(EventListener):
+    loop: AbstractEventLoop
+    receive_queue: Queue[str]
+
+    def __init__(self, loop: AbstractEventLoop, receive_queue: Queue[str]) -> None:
+        super().__init__()
+        self.loop = loop
+        self.receive_queue = receive_queue
+    
+    def on_event(self, e: SdkEvent):
+        print(f"Received new event: {e}")
+        if isinstance(e, SdkEvent.PAYMENT_SUCCEEDED) and e.details.tx_id is not None:
+            asyncio.run_coroutine_threadsafe(self.receive_queue.put(e.details.tx_id), self.loop)
+
 class DemoSDK():
     instance: breez_sdk_liquid.BindingLiquidSdk
+    receive_queue: Queue[str]
 
     def get_mnemonic(self) -> str:
         """
@@ -16,7 +34,6 @@ class DemoSDK():
         # print(mnemonic)
         # return mnemonic
         return "TODO: INSERT MNEMONIC HERE"
-        
 
     def __init__(self, data_dir: str):
         """
@@ -28,7 +45,10 @@ class DemoSDK():
         config.working_dir = data_dir
         connect_request = ConnectRequest(config=config, mnemonic=mnemonic)
         self.instance = connect(req=connect_request)
-
+        
+        self.receive_queue = Queue()
+        listener = DemoListener(asyncio.get_running_loop(), self.receive_queue)
+        self.instance.add_event_listener(listener)
     
     def get_info(self) -> breez_sdk_liquid.GetInfoResponse: # type: ignore[reportReturnType]
         """Step 2: Retrieve the wallet's information"""
@@ -50,13 +70,19 @@ class DemoSDK():
 
     async def wait_for_payment(self):
         """
-        Step 4: Use an Event Listener to wait for new payments
+        Step 5: Use an Event Listener to wait for new payments
         NOTE: Make sure you add the event listener to the __init__ method!
         """
+        txid = await self.receive_queue.get()
+        print(f"Received new payment: txid {txid}")
+
+async def main():
+    sdk = DemoSDK(DATA_DIR)
+    amount_sat = 1000
+    destination = sdk.get_funding_address(amount_sat)
+    print(f"Please pay {amount_sat} sat to destination: {destination}")
+    await sdk.wait_for_payment()
+    sdk.instance.disconnect()
 
 if __name__ == "__main__":
-    sdk = DemoSDK(DATA_DIR)
-
-    """your commands go here..."""
-
-    sdk.instance.disconnect()
+    asyncio.run(main())
