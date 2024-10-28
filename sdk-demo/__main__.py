@@ -32,6 +32,7 @@ class DemoSDK():
     
     def get_info(self) -> breez_sdk_liquid.GetInfoResponse: # type: ignore[reportReturnType]
         """Step 2: Retrieve the wallet's information"""
+        return self.instance.get_info()
 
     def get_funding_address(self, amount_sat: int) -> str: # type: ignore[reportReturnType]
         """Step 3: Get an address so we can fund the wallet"""
