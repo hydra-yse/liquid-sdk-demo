@@ -1,5 +1,5 @@
 import breez_sdk_liquid
-from breez_sdk_liquid.breez_sdk_liquid import ConnectRequest, LiquidNetwork, connect, default_config
+from breez_sdk_liquid.breez_sdk_liquid import ConnectRequest, LiquidNetwork, PaymentMethod, PrepareReceiveRequest, ReceivePaymentRequest, connect, default_config
 from mnemonic import Mnemonic
 
 DATA_DIR = ".data"
@@ -36,6 +36,10 @@ class DemoSDK():
 
     def get_funding_address(self, amount_sat: int) -> str: # type: ignore[reportReturnType]
         """Step 3: Get an address so we can fund the wallet"""
+        prepare_req = PrepareReceiveRequest(payer_amount_sat=amount_sat,payment_method=PaymentMethod.LIQUID_ADDRESS)
+        prepare_response = self.instance.prepare_receive_payment(prepare_req)
+        res = self.instance.receive_payment(ReceivePaymentRequest(prepare_response=prepare_response))
+        return res.destination
 
     def send_payment(self, amount_sat: int, destination: str) -> breez_sdk_liquid.Payment: # type: ignore[reportReturnType]
         """Step 4: Send funds to a Liquid, Lightning or Bitcoin address"""
